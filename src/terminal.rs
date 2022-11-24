@@ -1,5 +1,5 @@
 //! An abstract, text-based interface with the user. This module fulfils the 'read' and
-//! 'print' part of a REPL application.
+//! 'print' parts of a REPL application.
 
 mod mock;
 mod streaming;
