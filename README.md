@@ -42,4 +42,4 @@ cargo add revolver
 ```
 
 ## An example
-See `examples/calculator.rs` for a simple calculator REPL. 
+See [`examples/calculator.rs`](examples/calculator.rs) for a simple calculator REPL. 
