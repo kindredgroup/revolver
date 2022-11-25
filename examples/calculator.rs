@@ -6,11 +6,11 @@
 //!
 //! The example also includes the `help` and `quit` built-in commands.
 
-use co_sim_repl::command;
-use co_sim_repl::command::Commander;
-use co_sim_repl::command::NamedCommandParser;
-use co_sim_repl::looper::Looper;
-use co_sim_repl::terminal::{AccessTerminalError, Streaming, Terminal};
+use revolver::command;
+use revolver::command::Commander;
+use revolver::command::NamedCommandParser;
+use revolver::looper::Looper;
+use revolver::terminal::{AccessTerminalError, Streaming, Terminal};
 use std::convert::Infallible;
 
 #[derive(Debug, Default)]
@@ -52,12 +52,12 @@ mod add {
     //! A command and parser pair for adding a value to the register.
 
     use crate::Register;
-    use co_sim_repl::command::{
+    use revolver::command::{
         ApplyCommandError, ApplyOutcome, Command, Description, Example, NamedCommandParser,
         ParseCommandError,
     };
-    use co_sim_repl::looper::Looper;
-    use co_sim_repl::terminal::Terminal;
+    use revolver::looper::Looper;
+    use revolver::terminal::Terminal;
     use std::borrow::Cow;
     use std::convert::Infallible;
     use std::str::FromStr;
@@ -114,12 +114,12 @@ mod subtract {
     //! A command and parser pair for subtracting a value from the register.
 
     use crate::Register;
-    use co_sim_repl::command::{
+    use revolver::command::{
         ApplyCommandError, ApplyOutcome, Command, Description, Example, NamedCommandParser,
         ParseCommandError,
     };
-    use co_sim_repl::looper::Looper;
-    use co_sim_repl::terminal::Terminal;
+    use revolver::looper::Looper;
+    use revolver::terminal::Terminal;
     use std::borrow::Cow;
     use std::convert::Infallible;
     use std::str::FromStr;
@@ -175,12 +175,12 @@ mod subtract {
 mod print {
     //! A command and parser pair for printing the contents of the register.
     use crate::Register;
-    use co_sim_repl::command::{
+    use revolver::command::{
         ApplyCommandError, ApplyOutcome, Command, Description, NamedCommandParser,
         ParseCommandError,
     };
-    use co_sim_repl::looper::Looper;
-    use co_sim_repl::terminal::Terminal;
+    use revolver::looper::Looper;
+    use revolver::terminal::Terminal;
     use std::borrow::Cow;
     use std::convert::Infallible;
 
