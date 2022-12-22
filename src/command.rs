@@ -51,7 +51,7 @@ pub trait Command<T: Terminal> {
     /// The application context type. (The part of the application this is not the REPL library.)
     type Context;
 
-    /// The type of error that can be produced by the execution of the command. It is shuttled inside
+    /// The type of error that can be produced by the execution of the command.
     type Error;
 
     /// Applies the command for the given [`Looper`]. References to the underlying application
@@ -81,7 +81,7 @@ pub trait NamedCommandParser<T> {
     /// The application context type. (The part of the application this is not the REPL library.)
     type Context;
 
-    /// The type of error that can be produced by the execution of the command. It is shuttled inside
+    /// The type of error that can be produced by the execution of the command.
     type Error;
 
     /// Parses the given string slice, returning [`Command`] object.
