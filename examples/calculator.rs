@@ -14,7 +14,7 @@ use revolver::terminal::{AccessTerminalError, Streaming, Terminal};
 use std::convert::Infallible;
 
 #[derive(Debug, Default)]
-struct Register {
+pub struct Register {
     value: f64,
 }
 
@@ -30,12 +30,12 @@ impl Register {
 
 /// Creates a new [`Commander`] instance.
 fn commander<T: Terminal>() -> Commander<Register, Infallible, T> {
-    let parsers: Vec<Box<dyn NamedCommandParser<_, _, _>>> = vec![
+    let parsers: Vec<Box<dyn NamedCommandParser<_, Context=_, Error=_>>> = vec![
         Box::new(add::Parser),
         Box::new(print::Parser),
         Box::new(subtract::Parser),
-        Box::new(command::help::Parser),
-        Box::new(command::quit::Parser),
+        Box::new(command::help::Parser::default()),
+        Box::new(command::quit::Parser::default()),
     ];
     Commander::new(parsers)
 }
@@ -66,7 +66,10 @@ mod add {
         value: f64,
     }
 
-    impl<T: Terminal> Command<Register, Infallible, T> for Add {
+    impl<T: Terminal> Command<T> for Add {
+        type Context = Register;
+        type Error = Infallible;
+
         fn apply(
             &mut self,
             looper: &mut Looper<Register, Infallible, T>,
@@ -80,11 +83,14 @@ mod add {
 
     pub struct Parser;
 
-    impl<T: Terminal> NamedCommandParser<Register, Infallible, T> for Parser {
+    impl<T: Terminal> NamedCommandParser<T> for Parser {
+        type Context = Register;
+        type Error = Infallible;
+
         fn parse(
             &self,
             s: &str,
-        ) -> Result<Box<dyn Command<Register, Infallible, T>>, ParseCommandError> {
+        ) -> Result<Box<dyn Command<T, Context = Self::Context, Error = Self::Error>>, ParseCommandError> {
             let value = f64::from_str(s).map_err(ParseCommandError::convert)?;
             Ok(Box::new(Add { value }))
         }
@@ -128,10 +134,13 @@ mod subtract {
         value: f64,
     }
 
-    impl<T: Terminal> Command<Register, Infallible, T> for Subtract {
+    impl<T: Terminal> Command<T> for Subtract {
+        type Context = Register;
+        type Error = Infallible;
+
         fn apply(
             &mut self,
-            looper: &mut Looper<Register, Infallible, T>,
+            looper: &mut Looper<Self::Context, Self::Error, T>,
         ) -> Result<ApplyOutcome, ApplyCommandError<Infallible>> {
             let (terminal, _, register) = looper.split();
             register.value -= self.value;
@@ -142,11 +151,14 @@ mod subtract {
 
     pub struct Parser;
 
-    impl<T: Terminal> NamedCommandParser<Register, Infallible, T> for Parser {
+    impl<T: Terminal> NamedCommandParser<T> for Parser {
+        type Context = Register;
+        type Error = Infallible;
+
         fn parse(
             &self,
             s: &str,
-        ) -> Result<Box<dyn Command<Register, Infallible, T>>, ParseCommandError> {
+        ) -> Result<Box<dyn Command<T, Context = Self::Context, Error = Self::Error>>, ParseCommandError> {
             let value = f64::from_str(s).map_err(ParseCommandError::convert)?;
             Ok(Box::new(Subtract { value }))
         }
@@ -186,11 +198,14 @@ mod print {
 
     struct Print;
 
-    impl<T: Terminal> Command<Register, Infallible, T> for Print {
+    impl<T: Terminal> Command<T> for Print {
+        type Context = Register;
+        type Error = Infallible;
+
         fn apply(
             &mut self,
-            looper: &mut Looper<Register, Infallible, T>,
-        ) -> Result<ApplyOutcome, ApplyCommandError<Infallible>> {
+            looper: &mut Looper<Self::Context, Self::Error, T>,
+        ) -> Result<ApplyOutcome, ApplyCommandError<Self::Error>> {
             let (terminal, _, register) = looper.split();
             register.print(terminal)?;
             Ok(ApplyOutcome::Applied)
@@ -199,11 +214,14 @@ mod print {
 
     pub struct Parser;
 
-    impl<T: Terminal> NamedCommandParser<Register, Infallible, T> for Parser {
+    impl<T: Terminal> NamedCommandParser<T> for Parser {
+        type Context = Register;
+        type Error = Infallible;
+
         fn parse(
             &self,
             s: &str,
-        ) -> Result<Box<dyn Command<Register, Infallible, T>>, ParseCommandError> {
+        ) -> Result<Box<dyn Command<T, Context = Self::Context, Error = Self::Error>>, ParseCommandError> {
             self.parse_no_args(s, || Print)
         }
 

@@ -24,8 +24,11 @@ impl Terminal for TestTerminal {
     }
 }
 
-impl<T: Terminal> Command<TestContext, Infallible, T> for SampleCommand {
-    fn apply(&mut self, _: &mut Looper<TestContext, Infallible, T>) -> Result<ApplyOutcome, ApplyCommandError<Infallible>> {
+impl<T: Terminal> Command<T> for SampleCommand {
+    type Context = TestContext;
+    type Error = Infallible;
+
+    fn apply(&mut self, _: &mut Looper<Self::Context, Self::Error, T>) -> Result<ApplyOutcome, ApplyCommandError<Self::Error>> {
         Ok(ApplyOutcome::Applied)
     }
 }
@@ -45,13 +48,16 @@ impl FromStr for SampleCommand {
 
 struct Parser;
 
-impl<T: Terminal> NamedCommandParser<TestContext, Infallible, T> for Parser {
+impl<T: Terminal> NamedCommandParser<T> for Parser {
+    type Context = TestContext;
+    type Error = Infallible;
+
     fn parse(
         &self,
         s: &str,
-    ) -> Result<Box<dyn Command<TestContext, Infallible, T>>, ParseCommandError> {
+    ) -> Result<Box<dyn Command<T, Context = Self::Context, Error = Self::Error>>, ParseCommandError> {
         SampleCommand::from_str(s)
-            .map(|cmd| Box::new(cmd) as Box<dyn Command<TestContext, Infallible, T>>)
+            .map(|cmd| Box::new(cmd) as Box<dyn Command<T, Context = Self::Context, Error = Self::Error>>)
     }
 
     fn shorthand(&self) -> Option<Cow<'static, str>> {
@@ -84,14 +90,14 @@ fn parse_command_error_implements_display() {
 #[test]
 fn description_implements_debug() {
     let parser = Parser;
-    let description = <Parser as NamedCommandParser<_, _, TestTerminal>>::description(&parser);
+    let description = <Parser as NamedCommandParser<TestTerminal>>::description(&parser);
     let s = format!("{:?}", description);
     assert!(s.contains("Description"));
 }
 
 #[test]
 fn commander() {
-    let parsers: Vec<Box<dyn NamedCommandParser<_, _, TestTerminal>>> = vec![Box::new(Parser)];
+    let parsers: Vec<Box<dyn NamedCommandParser<TestTerminal, Context=_, Error=_>>> = vec![Box::new(Parser)];
     let commander = Commander::new(parsers);
     assert_eq!(1, commander.parsers().count());
     assert_eq!(None, commander.parse("s").err());
@@ -137,11 +143,14 @@ struct TestCommandParser {
     example_command: Cow<'static, str>
 }
 
-impl<T: Terminal> NamedCommandParser<TestContext, Infallible, T> for TestCommandParser {
+impl<T: Terminal> NamedCommandParser<T> for TestCommandParser {
+    type Context = TestContext;
+    type Error = Infallible;
+
     fn parse(
         &self,
         s: &str,
-    ) -> Result<Box<dyn Command<TestContext, Infallible, T>>, ParseCommandError> {
+    ) -> Result<Box<dyn Command<T, Context = Self::Context, Error = Self::Error>>, ParseCommandError> {
         usize::from_str(s).map_err(ParseCommandError::convert)?;
         Ok(Box::new(SampleCommand))
     }
@@ -170,7 +179,7 @@ impl<T: Terminal> NamedCommandParser<TestContext, Infallible, T> for TestCommand
 
 #[test]
 fn commander_duplicate_short() {
-    let parsers: Vec<Box<dyn NamedCommandParser<_, _, TestTerminal>>> = vec![
+    let parsers: Vec<Box<dyn NamedCommandParser<TestTerminal, Context = _ , Error = _>>> = vec![
         Box::new(TestCommandParser {
             short: Some("g".into()),
             long: "g1".into(),
@@ -190,7 +199,7 @@ fn commander_duplicate_short() {
 
 #[test]
 fn commander_duplicate_long() {
-    let parsers: Vec<Box<dyn NamedCommandParser<_, _, TestTerminal>>> = vec![
+    let parsers: Vec<Box<dyn NamedCommandParser<TestTerminal, Context=_, Error=_>>> = vec![
         Box::new(TestCommandParser {
             short: Some("g".into()),
             long: "gg".into(),
@@ -212,7 +221,7 @@ fn commander_duplicate_long() {
 
 #[test]
 fn commander_duplicate_short_in_long() {
-    let parsers: Vec<Box<dyn NamedCommandParser<_, _, TestTerminal>>> = vec![
+    let parsers: Vec<Box<dyn NamedCommandParser<TestTerminal, Context = _ , Error = _>>> = vec![
         Box::new(TestCommandParser {
             short: Some("gg".into()),
             long: "hh".into(),
@@ -234,7 +243,7 @@ fn commander_duplicate_short_in_long() {
 
 #[test]
 fn commander_duplicate_long_in_short() {
-    let parsers: Vec<Box<dyn NamedCommandParser<_, _, TestTerminal>>> = vec![
+    let parsers: Vec<Box<dyn NamedCommandParser<TestTerminal, Context=_, Error=_>>> = vec![
         Box::new(TestCommandParser {
             short: Some("gg".into()),
             long: "hh".into(),
@@ -256,7 +265,7 @@ fn commander_duplicate_long_in_short() {
 
 #[test]
 fn commander_long_name_too_short() {
-    let parsers: Vec<Box<dyn NamedCommandParser<_, _, TestTerminal>>> =
+    let parsers: Vec<Box<dyn NamedCommandParser<TestTerminal, Context=_, Error=_>>> =
         vec![Box::new(TestCommandParser {
             short: Some("g".into()),
             long: "h".into(),
@@ -272,7 +281,7 @@ fn commander_long_name_too_short() {
 
 #[test]
 fn commander_unparsable_example() {
-    let parsers: Vec<Box<dyn NamedCommandParser<_, _, TestTerminal>>> =
+    let parsers: Vec<Box<dyn NamedCommandParser<TestTerminal, Context=_, Error=_>>> =
         vec![Box::new(TestCommandParser {
             short: Some("g".into()),
             long: "ggg".into(),
@@ -290,7 +299,7 @@ fn application_error() -> ApplyCommandError<&'static str> {
     ApplyCommandError::Application("data")
 }
 
-fn access_terminal_error() -> ApplyCommandError::<Infallible> {
+fn access_terminal_error() -> ApplyCommandError<Infallible> {
     ApplyCommandError::AccessTerminal(AccessTerminalError("data".into()))
 }
 

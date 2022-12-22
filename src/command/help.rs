@@ -11,13 +11,27 @@ use stanza::renderer::Renderer;
 use stanza::style::{Bold, Header, MaxWidth, MinWidth, Palette16, Styles, TextFg};
 use stanza::table::{Cell, Col, Row, Table};
 use std::borrow::{Borrow, Cow};
+use std::marker::PhantomData;
 
 /// The `help` command. The list of available commands is obtained by interrogating the [`Commander`]. The output
 /// of the help command is a rendered [Stanza](https://github.com/obsidiandynamics/stanza) table, enumerating
 /// each of the available commands, their name (incl. shorthand, if set) and description (incl. any examples).
-pub struct Help;
+pub struct Help<C, E> {
+    __phantom_data: PhantomData<(C, E)>
+}
 
-impl<C, E, T: Terminal> Command<C, E, T> for Help {
+impl<C, E> Default for Help<C, E> {
+    fn default() -> Self {
+        Self {
+            __phantom_data: PhantomData::default(),
+        }
+    }
+}
+
+impl<C, E, T: Terminal> Command<T> for Help<C, E> {
+    type Context = C;
+    type Error = E;
+
     fn apply(
         &mut self,
         looper: &mut Looper<C, E, T>,
@@ -29,11 +43,24 @@ impl<C, E, T: Terminal> Command<C, E, T> for Help {
 }
 
 /// Parser for [`Help`].
-pub struct Parser;
+pub struct Parser<C, E> {
+    __phantom_data: PhantomData<(C, E)>
+}
 
-impl<C, E, T: Terminal> NamedCommandParser<C, E, T> for Parser {
-    fn parse(&self, s: &str) -> Result<Box<dyn Command<C, E, T>>, ParseCommandError> {
-        self.parse_no_args(s, || Help)
+impl<C, E> Default for Parser<C, E> {
+    fn default() -> Self {
+        Self {
+            __phantom_data: PhantomData::default(),
+        }
+    }
+}
+
+impl<C: 'static, E: 'static, T: Terminal> NamedCommandParser<T> for Parser<C, E> {
+    type Context = C;
+    type Error = E;
+
+    fn parse(&self, s: &str) -> Result<Box<dyn Command<T, Context = C , Error = E>>, ParseCommandError> {
+        self.parse_no_args(s, Help::default)
     }
 
     fn shorthand(&self) -> Option<Cow<'static, str>> {

@@ -10,8 +10,11 @@ struct Parser {
     description: Description
 }
 
-impl<T> NamedCommandParser<(), Infallible, T> for Parser {
-    fn parse(&self, _: &str) -> Result<Box<dyn Command<(), Infallible, T>>, ParseCommandError> {
+impl<T> NamedCommandParser<T> for Parser {
+    type Context = ();
+    type Error = Infallible;
+
+    fn parse(&self, _: &str) -> Result<Box<dyn Command<T, Context = Self::Context, Error = Self::Error>>, ParseCommandError> {
         unimplemented!()
     }
 

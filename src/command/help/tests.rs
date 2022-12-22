@@ -15,7 +15,10 @@ use crate::command::help::commands;
 #[derive(Debug)]
 struct SampleCommand;
 
-impl<T: Terminal> Command<(), Infallible, T> for SampleCommand {
+impl<T: Terminal> Command<T> for SampleCommand {
+    type Context = ();
+    type Error = Infallible;
+
     fn apply(
         &mut self,
         _: &mut Looper<(), Infallible, T>,
@@ -26,8 +29,11 @@ impl<T: Terminal> Command<(), Infallible, T> for SampleCommand {
 
 struct SampleParser;
 
-impl<T: Terminal> NamedCommandParser<(), Infallible, T> for SampleParser {
-    fn parse(&self, _: &str) -> Result<Box<dyn Command<(), Infallible, T>>, ParseCommandError> {
+impl<T: Terminal> NamedCommandParser<T> for SampleParser {
+    type Context = ();
+    type Error = Infallible;
+
+    fn parse(&self, _: &str) -> Result<Box<dyn Command<T, Context = Self::Context, Error = Self::Error>>, ParseCommandError> {
         Ok(Box::new(SampleCommand))
     }
 
@@ -55,8 +61,8 @@ impl<T: Terminal> NamedCommandParser<(), Infallible, T> for SampleParser {
 fn invoke() {
     let mut term = Mock::default().on_read_line(lines(&["help", "quit"]));
     let commander = Commander::<_, Infallible, _>::new(vec![
-        Box::new(super::Parser),
-        Box::new(quit::Parser),
+        Box::new(super::Parser::default()),
+        Box::new(quit::Parser::default()),
         Box::new(SampleParser),
     ]);
     let mut context = ();
@@ -76,8 +82,8 @@ fn invoke() {
 #[test]
 fn commands_content() {
     let commander = Commander::<_, _, Mock>::new(vec![
-        Box::new(super::Parser),
-        Box::new(quit::Parser),
+        Box::new(super::Parser::default()),
+        Box::new(quit::Parser::default()),
         Box::new(SampleParser),
     ]);
 
@@ -106,6 +112,6 @@ fn commands_content() {
 fn parse_error() {
     assert_eq!(
         ParseCommandError("invalid arguments to 'help': 'foo'".into()),
-        NamedCommandParser::<(), Infallible, Mock>::parse(&super::Parser, "foo").err().unwrap()
+        NamedCommandParser::<Mock>::parse(&super::Parser::<(), Infallible>::default(), "foo").err().unwrap()
     );
 }

@@ -26,10 +26,13 @@ struct Echo {
     num: usize,
 }
 
-impl<T: Terminal> Command<TestContext, TestError, T> for Echo {
+impl<T: Terminal> Command<T> for Echo {
+    type Context = TestContext;
+    type Error = TestError;
+
     fn apply(
         &mut self,
-        looper: &mut Looper<TestContext, TestError, T>,
+        looper: &mut Looper<Self::Context, Self::Error, T>,
     ) -> Result<ApplyOutcome, ApplyCommandError<TestError>> {
         looper
             .terminal
@@ -40,11 +43,14 @@ impl<T: Terminal> Command<TestContext, TestError, T> for Echo {
 
 struct EchoParser;
 
-impl<T: Terminal> NamedCommandParser<TestContext, TestError, T> for EchoParser {
+impl<T: Terminal> NamedCommandParser<T> for EchoParser {
+    type Context = TestContext;
+    type Error = TestError;
+
     fn parse(
         &self,
         s: &str,
-    ) -> Result<Box<dyn Command<TestContext, TestError, T>>, ParseCommandError> {
+    ) -> Result<Box<dyn Command<T, Context = Self::Context, Error = Self::Error>>, ParseCommandError> {
         let num = usize::from_str(s).map_err(ParseCommandError::convert)?;
         Ok(Box::new(Echo { num }))
     }
@@ -71,11 +77,14 @@ struct Respond {
     val: Result<ApplyOutcome, ApplyCommandError<TestError>>,
 }
 
-impl<T: Terminal> Command<TestContext, TestError, T> for Respond {
+impl<T: Terminal> Command<T> for Respond {
+    type Context = TestContext;
+    type Error = TestError;
+
     fn apply(
         &mut self,
-        _: &mut Looper<TestContext, TestError, T>,
-    ) -> Result<ApplyOutcome, ApplyCommandError<TestError>> {
+        _: &mut Looper<Self::Context, Self::Error, T>,
+    ) -> Result<ApplyOutcome, ApplyCommandError<Self::Error>> {
         self.val.clone()
     }
 }
@@ -84,11 +93,14 @@ struct RespondParser {
     val: Result<ApplyOutcome, ApplyCommandError<TestError>>,
 }
 
-impl<T: Terminal> NamedCommandParser<TestContext, TestError, T> for RespondParser {
+impl<T: Terminal> NamedCommandParser<T> for RespondParser {
+    type Context = TestContext;
+    type Error = TestError;
+
     fn parse(
         &self,
         s: &str,
-    ) -> Result<Box<dyn Command<TestContext, TestError, T>>, ParseCommandError> {
+    ) -> Result<Box<dyn Command<T, Context = Self::Context, Error = Self::Error>>, ParseCommandError> {
         assert!(s.is_empty());
         let val = self.val.clone();
         Ok(Box::new(Respond { val }))
@@ -124,7 +136,7 @@ fn get_context() {
 #[test]
 fn echo_applied() {
     let mut term = Mock::default().on_read_line(lines(&["echo 1", "echo 2", "quit"]));
-    let commander = Commander::new(vec![Box::new(EchoParser), Box::new(quit::Parser)]);
+    let commander = Commander::new(vec![Box::new(EchoParser), Box::new(quit::Parser::default())]);
     let mut context = TestContext::default();
     let mut looper = Looper::new(&mut term, &commander, &mut context);
     looper.run().unwrap();
@@ -148,7 +160,7 @@ fn echo_applied() {
 #[test]
 fn echo_with_parse_error() {
     let mut term = Mock::default().on_read_line(lines(&["echo x", "echo 2", "quit"]));
-    let commander = Commander::new(vec![Box::new(EchoParser), Box::new(quit::Parser)]);
+    let commander = Commander::new(vec![Box::new(EchoParser), Box::new(quit::Parser::default())]);
     let mut context = TestContext::default();
     let mut looper = Looper::new(&mut term, &commander, &mut context);
     looper.run().unwrap();
@@ -179,7 +191,7 @@ fn respond_skip() {
         Box::new(RespondParser {
             val: Ok(ApplyOutcome::Skipped),
         }),
-        Box::new(quit::Parser),
+        Box::new(quit::Parser::default()),
     ]);
     let mut context = TestContext::default();
     let mut looper = Looper::new(&mut term, &commander, &mut context);
@@ -206,7 +218,7 @@ fn respond_application_error() {
                 "cooling pump exploded".into(),
             ))),
         }),
-        Box::new(quit::Parser),
+        Box::new(quit::Parser::default()),
     ]);
     let mut context = TestContext::default();
     let mut looper = Looper::new(&mut term, &commander, &mut context);

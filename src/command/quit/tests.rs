@@ -8,6 +8,6 @@ use crate::terminal::Mock;
 fn parse_error() {
     assert_eq!(
         ParseCommandError("invalid arguments to 'quit': 'foo'".into()),
-        NamedCommandParser::<(), Infallible, Mock>::parse(&super::Parser, "foo").err().unwrap()
+        NamedCommandParser::<Mock>::parse(&super::Parser::<(), Infallible>::default(), "foo").err().unwrap()
     );
 }

@@ -46,20 +46,21 @@ impl<E> ApplyCommandError<E> {
 
 /// The definition of an executable command.
 ///
-/// `C` is the application context type. (The part of the application this is not the REPL library.)
-///
-/// `E` is the type of error that can be produced by the execution of the command. It is shuttled inside
-/// of a [`ApplyCommandError`] struct.
-///
 /// `T` is the terminal type.
-pub trait Command<C, E, T: Terminal> {
+pub trait Command<T: Terminal> {
+    /// The application context type. (The part of the application this is not the REPL library.)
+    type Context;
+
+    /// The type of error that can be produced by the execution of the command. It is shuttled inside
+    type Error;
+
     /// Applies the command for the given [`Looper`]. References to the underlying application
     /// context and the terminal interface are supplied by the [`Looper`].
     ///
     /// # Errors
     /// [`ApplyCommandError`] if the command could not be executed.
-    fn apply(&mut self, looper: &mut Looper<C, E, T>)
-        -> Result<ApplyOutcome, ApplyCommandError<E>>;
+    fn apply(&mut self, looper: &mut Looper<Self::Context, Self::Error, T>)
+        -> Result<ApplyOutcome, ApplyCommandError<Self::Error>>;
 }
 
 /// The outcome of applying a [`Command`].
@@ -76,12 +77,19 @@ pub enum ApplyOutcome {
 
 /// A parser for constructing [`Command`] implementations from a text string (a line read from the
 /// terminal interface).
-pub trait NamedCommandParser<C, E, T> {
+pub trait NamedCommandParser<T> {
+    /// The application context type. (The part of the application this is not the REPL library.)
+    type Context;
+
+    /// The type of error that can be produced by the execution of the command. It is shuttled inside
+    type Error;
+
     /// Parses the given string slice, returning [`Command`] object.
     ///
     /// # Errors
     /// [`ParseCommandError`] if the command couldn't be parsed.
-    fn parse(&self, s: &str) -> Result<Box<dyn Command<C, E, T>>, ParseCommandError>;
+    #[allow(clippy::type_complexity)]
+    fn parse(&self, s: &str) -> Result<Box<dyn Command<T, Context = Self::Context, Error = Self::Error>>, ParseCommandError>;
 
     /// Optional shorthand moniker for the command. The user may type in this string instead of the
     /// full command name.
@@ -99,13 +107,14 @@ pub trait NamedCommandParser<C, E, T> {
     ///
     /// # Errors
     /// [`ParseCommandError`] if the command couldn't be parsed.
+    #[allow(clippy::type_complexity)]
     fn parse_no_args<M>(
         &self,
         s: &str,
         ctor: impl FnOnce() -> M,
-    ) -> Result<Box<dyn Command<C, E, T>>, ParseCommandError>
+    ) -> Result<Box<dyn Command<T, Context = Self::Context, Error = Self::Error>>, ParseCommandError>
     where
-        M: Command<C, E, T> + 'static,
+        M: Command<T, Context = Self::Context, Error = Self::Error> + 'static,
         T: Terminal,
         Self: Sized,
     {
@@ -150,7 +159,7 @@ impl Example {
     ///
     /// # Errors
     /// If parsing fails.
-    fn assert_parsable<C, E, T, P: NamedCommandParser<C, E, T> + ?Sized>(
+    fn assert_parsable<C, E, T, P: NamedCommandParser<T, Context = C, Error = E> + ?Sized>(
         &self,
         parser: &P,
     ) -> Result<(), ParseCommandError> {
@@ -162,7 +171,7 @@ impl Example {
 /// Decodes user input (typically a line read from a terminal interface) into a dynamic [`Command`] object, using
 /// a preconfigured map of parsers.
 pub struct Commander<C, E, T> {
-    parsers: Vec<Box<dyn NamedCommandParser<C, E, T>>>,
+    parsers: Vec<Box<dyn NamedCommandParser<T, Context = C, Error = E>>>,
     by_shorthand: BTreeMap<String, usize>,
     by_name: BTreeMap<String, usize>,
 }
@@ -172,12 +181,12 @@ impl<C, E, T> Commander<C, E, T> {
     ///
     /// # Panics
     /// If there was an error building a [`Commander`] from the given parsers.
-    pub fn new(parsers: Vec<Box<dyn NamedCommandParser<C, E, T>>>) -> Self {
+    pub fn new(parsers: Vec<Box<dyn NamedCommandParser<T, Context = C, Error = E>>>) -> Self {
         parsers.try_into().unwrap()
     }
 
     /// An iterator over the underlying parsers.
-    pub fn parsers(&self) -> impl Iterator<Item = &Box<dyn NamedCommandParser<C, E, T>>> {
+    pub fn parsers(&self) -> impl Iterator<Item = &Box<dyn NamedCommandParser<T, Context = C, Error = E>>> {
         self.by_name.values().map(|&idx| &self.parsers[idx])
     }
 }
@@ -203,10 +212,10 @@ impl ParseCommandError {
     }
 }
 
-impl<C, E, T> TryFrom<Vec<Box<dyn NamedCommandParser<C, E, T>>>> for Commander<C, E, T> {
+impl<C, E, T> TryFrom<Vec<Box<dyn NamedCommandParser<T, Context = C , Error = E>>>> for Commander<C, E, T> {
     type Error = InvalidCommandParserSpec;
 
-    fn try_from(parsers: Vec<Box<dyn NamedCommandParser<C, E, T>>>) -> Result<Self, Self::Error> {
+    fn try_from(parsers: Vec<Box<dyn NamedCommandParser<T, Context = C , Error = E>>>) -> Result<Self, Self::Error> {
         // helper function for inserting a parser reference into some tree map and returning an error if a duplicate
         // mapping is detected
         fn insert<N: Ord + Display>(
@@ -290,7 +299,7 @@ impl<C, E, T> Commander<C, E, T> {
     ///
     /// # Errors
     /// [`ParseCommandError`] if a [`Command`] object could not be constructed.
-    pub fn parse(&self, s: &str) -> Result<Box<dyn Command<C, E, T>>, ParseCommandError> {
+    pub fn parse(&self, s: &str) -> Result<Box<dyn Command<T, Context = C , Error = E>>, ParseCommandError> {
         if s.is_empty() {
             return Err(ParseCommandError("empty command string".into()));
         }
@@ -316,7 +325,7 @@ impl<C, E, T> Commander<C, E, T> {
 pub(crate) fn read_command<C, E, T: Terminal>(
     looper: &mut Looper<C, E, T>,
     prompt: &str,
-) -> Result<Box<dyn Command<C, E, T>>, AccessTerminalError> {
+) -> Result<Box<dyn Command<T, Context = C , Error = E>>, AccessTerminalError> {
     let (terminal, commander, _) = looper.split();
     terminal.read_value(prompt, |str| commander.parse(str))
 }

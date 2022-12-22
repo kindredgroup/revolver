@@ -36,7 +36,7 @@ impl Lint {
 /// # Panics
 /// If any lint is raised. The panic message contains the description of the first failed lint
 /// (possibly among many).
-pub fn assert_pedantic<C, E, T>(parser: &impl NamedCommandParser<C, E, T>) {
+pub fn assert_pedantic<C, E, T>(parser: &impl NamedCommandParser<T, Context = C , Error = E>) {
     assert(parser, &[]);
 }
 
@@ -46,7 +46,7 @@ pub fn assert_pedantic<C, E, T>(parser: &impl NamedCommandParser<C, E, T>) {
 /// # Panics
 /// If a lint is raised that isn't covered by `exclusions`. The panic message contains the
 /// description of the first failed lint (possibly among many).
-pub fn assert<C, E, T>(parser: &impl NamedCommandParser<C, E, T>, exclusions: &[Lint]) {
+pub fn assert<C, E, T>(parser: &impl NamedCommandParser<T, Context = C , Error = E>, exclusions: &[Lint]) {
     let failed = validate(parser);
     for failed_lint in failed {
         assert!(exclusions.contains(&failed_lint), "failed lint: {failed_lint:?}");
@@ -54,7 +54,7 @@ pub fn assert<C, E, T>(parser: &impl NamedCommandParser<C, E, T>, exclusions: &[
 }
 
 /// Ensures that the parser is correctly specified, returning a vector of failed lints.
-pub fn validate<C, E, T>(parser: &impl NamedCommandParser<C, E, T>) -> Vec<Lint> {
+pub fn validate<C, E, T>(parser: &impl NamedCommandParser<T, Context = C , Error = E>) -> Vec<Lint> {
     let mut failed = vec![];
     validate_description(&parser.name(), &parser.description(), &mut failed);
     failed
