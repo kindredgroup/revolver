@@ -1,6 +1,6 @@
 [package]
 name = "revolver"
-version = "0.2.0"
+version = "0.2.1"
 edition = "2021"
 readme = "README.md"
 authors = ["Kindred Group", "Emil Koutanov"]
@@ -11,8 +11,8 @@ keywords = ["cli", "repl", "terminal", "shell"]
 exclude = ["/images", "/bin", "/.idea", "/.github", "/coverage", "/doc", "/examples"]
 
 [dependencies]
-thiserror = "1.0.37"
-stanza = "0.3.0"
+thiserror = "2.0.12"
+stanza = "0.5.2"
 
 [dev-dependencies]
 stdio-override = "0.1.3"
